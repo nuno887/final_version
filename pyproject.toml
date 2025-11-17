@@ -1,7 +1,7 @@
 [project]
 name = "final-version"
 version = "0.1.0"
-description = "Add your description here"
+description = "JORAM, Beginning from 2020"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

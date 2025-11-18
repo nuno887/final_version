@@ -32,9 +32,9 @@ def is_serie(filename: str) -> Optional[int]:
     if "iiiserie" in filename.lower():
         return 3
     if "iiserie" in filename.lower():
-        return 2
+        return 4
     if "iserie" in filename.lower():
-        return 1
+        return 4
     if "ivserie" in filename.lower():
         return 4
     return None
@@ -72,9 +72,14 @@ def main():
 
     doc, sumario_dict, body_dict = build_dicts(nlp, text)
 
-    print(f"Teste:", sumario_dict)
-    print(f"======================================================================")
-    print(f"body_dicts:", body_dict)
+    sumario_list = sumario_dic(sumario_dict)
+
+    print(f"sumario_list:", sumario_list)
+    print(f"sumario_list:", len(sumario_list))
+
+    #print(f"Teste:", sumario_dict)
+    #print(f"======================================================================")
+    #print(f"body_dicts:", body_dict)
 
     #print(len(sumario_dic(doc_sumario)))
 

@@ -1,7 +1,7 @@
 
 import re
 import unicodedata
-
+from typing import Dict, List, Any
 
 def _normalize_for_match_letters_only(s: str) -> str:
     """Normalize a string for matching org names using letters-only semantics."""
@@ -123,10 +123,69 @@ def _find_next_matching_org(indexed_entity_dict, target_org_text, position_org):
 
     return sumario_dict, body_dict
 
+def _merge_adjacent_star_orgs_in_dict(segment_dict: Dict[int, Dict[str, str]]) -> Dict[int, Dict[str, str]]:
+    """
+    Merges adjacent entities within a dictionary segment if they both have 
+    the label 'ORG_WITH_STAR_LABEL'.
+    """
+    if not segment_dict:
+        return segment_dict
+
+    merged_dict = {}
+    keys = sorted(segment_dict.keys())
+    i = 0
+
+    while i < len(keys):
+        current_key = keys[i]
+        current_entry = segment_dict[current_key]
+        current_label = current_entry['label']
+        
+        # Start a merge operation if the current label is the target
+        if current_label == "ORG_WITH_STAR_LABEL":
+            merged_text = current_entry['text']
+            j = i + 1
+            
+            # Look ahead for adjacent keys
+            while j < len(keys):
+                next_key = keys[j]
+                
+                # Check for adjacency: keys must be consecutive integers
+                if next_key == current_key + 1:
+                    next_entry = segment_dict[next_key]
+                    next_label = next_entry['label']
+                    
+                    if next_label == "ORG_WITH_STAR_LABEL":
+                        # MERGE: Append text and update the current_key reference
+                        # Use a space to join the text for readability
+                        merged_text += " " + next_entry['text']
+                        current_key = next_key # Advance the current_key reference
+                        j += 1 # Move to the next potential entity
+                    else:
+                        break # Stop merging if the next label is different
+                else:
+                    break # Stop merging if the keys aren't adjacent
+            
+            # After merging, store the combined entity at the STARTING position (keys[i])
+            merged_dict[keys[i]] = {
+                'text': merged_text,
+                'label': current_label # Label remains ORG_WITH_STAR_LABEL
+            }
+            # Advance the main counter (i) past all merged entities
+            i = j
+        
+        else:
+            # If not merging, just copy the entity
+            merged_dict[current_key] = current_entry
+            i += 1
+            
+    return merged_dict
+
+
 def split_text(doc):
     indexed_entity_dict = _extract_text_to_dic(doc)
     #print(f"dict:", indexed_entity_dict)
     target_org, target_position = _find_org_after_last_sumario(indexed_entity_dict)
     sumario_dict, body_dict = _find_next_matching_org(indexed_entity_dict, target_org, target_position)
+    sumario_dict_merged = _merge_adjacent_star_orgs_in_dict(sumario_dict)
 
-    return sumario_dict, body_dict
+    return sumario_dict_merged, body_dict

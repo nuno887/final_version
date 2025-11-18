@@ -59,7 +59,7 @@ def build_dicts(nlp, full_text: str):
 
 
 def main():
-    PDF = Path(r"pdf_input\\IISerie-005-2020-01-08Supl3.pdf")
+    PDF = Path(r"pdf_input\\IVSerie-015-2020-02-24.pdf")
 
 
     serie = is_serie(PDF.name)
@@ -72,10 +72,12 @@ def main():
 
     doc, sumario_dict, body_dict = build_dicts(nlp, text)
 
-    sumario_list = sumario_dic(sumario_dict)
+    sumario_list , sumario_group= sumario_dic(sumario_dict)
 
     print(f"sumario_list:", sumario_list)
     print(f"sumario_list:", len(sumario_list))
+    print(f"==========================================================================")
+    print(f"sumario_group:", sumario_group)
 
     #print(f"Teste:", sumario_dict)
     #print(f"======================================================================")
@@ -88,7 +90,4 @@ def main():
     out_path.write_text(html, encoding = "utf-8")
 
   
-
-
-
 main()

@@ -1,3 +1,3 @@
-from .split_text import split_sumario_and_body
+from .split_text_02 import split_text
 
-__all__ = ["split_sumario_and_body"]
+__all__ = ["split_text"]

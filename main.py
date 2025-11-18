@@ -4,16 +4,16 @@ import pathlib
 import argparse
 import html as html_lib
 from spacy import displacy
-from split_text import split_sumario_and_body
-from relation_extractor import RelationExtractor, RelationExtractorSerieIII, export_relations_items_minimal_json, export_serieIII_items_minimal_json
-from pdf_markup import extract_pdf_to_markdown
-from spacy_modulo import get_nlp, setup_entities, setup_entitiesIV
-from body_extraction import divide_body_by_org_and_docs, divide_body_by_org_and_docs_serieIII, split_doc_by_assinatura
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import json
+
+from split_text import split_text
+from pdf_markup import extract_pdf_to_markdown
+from spacy_modulo import get_nlp, setup_entities, setup_entitiesIV
+from relation_extractor_02 import sumario_dic
 
 OPTIONS = {"colors": {
     "Sumario": "#ffd166",
@@ -40,65 +40,50 @@ def is_serie(filename: str) -> Optional[int]:
     return None
 
 
-def build_docs(nlp, full_text: str):
+def build_dicts(nlp, full_text: str):
     """
-    Returns (doc, doc_sumario, doc_body, sumario_text, body_text, meta)
+    Returns (doc, doc_sumario, doc_body, sumario_text, body_text)
     """
+    sumario_dict = None
+    body_dict = None
     doc = nlp(full_text)
-    sumario_text, body_text, meta = split_sumario_and_body(doc, None)
-    doc_sumario = nlp(sumario_text)
-    doc_body = nlp(body_text)
-    return doc, doc_sumario, doc_body, sumario_text, body_text, meta
+    try:
+        sumario_dict, body_dict = split_text(doc)
+
+    except ValueError as e:
+        print("❌ Error encountered during dictionary slicing:")
+        print(f"Reason: {e}")
+ 
+    return doc, sumario_dict, body_dict
 
 
-def extract_relations_and_payload(doc_sumario, serie_iii: int):
-    if serie_iii == 3:
-        rex = RelationExtractorSerieIII(debug=True)
-        rels = rex.extract(doc_sumario)
-        payload = export_serieIII_items_minimal_json(rels)
-    else:
-        rex = RelationExtractor(debug=True)
-        rels = rex.extract(doc_sumario)
-        payload = export_relations_items_minimal_json(rels, path=None)
-    return rels, payload
-
-
-def split_body(doc_body, payload, serie: int):
-    if serie == 3:
-        print("divide_body_by_org_and_docs_serieIII")
-        # IMPORTANT: pass the same pipeline used to build doc_body
-        results, summary = divide_body_by_org_and_docs_serieIII(
-            doc_body,
-            payload,
-
-        )
-        return results, summary
-    if serie == 4:
-        print(f"split_doc_by_assinatura")
-        results = split_doc_by_assinatura(doc_body)
-        summary = None
-        return results, summary
-    if serie in [1, 2]:
-        # Keep your Serie I/II path as-is if you still use it elsewhere
-        print("divide_body_by_org_and_docs")
-
-        results, summary = divide_body_by_org_and_docs(
-            doc_body,
-            payload,
-            write_org_files=False,
-            write_doc_files=False,
-        )
-        return results, summary
-    else:
-        print("You should not be here")
 
 def main():
-    PDF = Path(r"pdf_input\\IIISerie-08-2020-05-08.pdf")
+    PDF = Path(r"pdf_input\\IISerie-005-2020-01-08Supl3.pdf")
+
 
     serie = is_serie(PDF.name)
     nlp = get_nlp(serie)
     text = extract_pdf_to_markdown(PDF)
+
+    
     nlp.max_lengt = max(nlp.max_length, len(text) + 1)
-    doc, doc_sumario, doc_body, sumario_text, body_text, _meta = build_docs(nlp, text)
-    rels, payload = extract_relations_and_payload(doc_sumario, serie)
-    results, summary = split_body(doc_body, payload, serie)
+    doc_1 =nlp(text)
+
+    doc, sumario_dict, body_dict = build_dicts(nlp, text)
+
+    print(f"Teste:", sumario_dict)
+    print(f"======================================================================")
+    print(f"body_dicts:", body_dict)
+
+    #print(len(sumario_dic(doc_sumario)))
+
+    html = displacy.render(doc, style = "ent", options= OPTIONS, page = True)
+    out_path = pathlib.Path("entities.html")
+    out_path.write_text(html, encoding = "utf-8")
+
+  
+
+
+
+main()

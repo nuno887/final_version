@@ -37,6 +37,7 @@ RULER_PATTERNS = [
 
 {"label": "SERIE_III", "pattern": "Direção Regional do Trabalho"},
 {"label": "SERIE_III", "pattern": "Direcção Regional do Trabalho"},
+{"label": "SERIE_III", "pattern": "Direção Regional do Trabalho e da Ação Inspetiva"},
 
 {"label": "DOC_NAME_LABEL", "pattern": "Convenções Coletivas de Trabalho:"},
 {"label": "DOC_NAME_LABEL", "pattern": "Portarias de Extensão:"},

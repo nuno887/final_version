@@ -92,8 +92,14 @@ def _group_block_entities_by_label(blocks: List[Dict[int, Dict[str, str]]]) -> D
 
 
 def sumario_dic(items):
+    """
+    Returns:
+        blocks: list of raw blocks split by org headers
+        blocks_list: intermediate grouped structure:
+            Dict[block_index, Dict[label, List[text]]]
+    """
 
     blocks = _split_by_org_headers(items)
-    blocks_list = _group_block_entities_by_label(blocks)
+    GroupedBlock = _group_block_entities_by_label(blocks)
 
-    return blocks, blocks_list
+    return blocks, GroupedBlock

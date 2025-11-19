@@ -14,6 +14,7 @@ from split_text import split_text
 from pdf_markup import extract_pdf_to_markdown
 from spacy_modulo import get_nlp, setup_entities, setup_entitiesIV
 from relation_extractor_02 import sumario_dic
+from results import build_sumario_docs_from_grouped_blocks, classBuilder
 
 OPTIONS = {"colors": {
     "Sumario": "#ffd166",
@@ -65,27 +66,29 @@ def main():
     serie = is_serie(PDF.name)
     nlp = get_nlp(serie)
     text = extract_pdf_to_markdown(PDF)
-
     
     nlp.max_lengt = max(nlp.max_length, len(text) + 1)
-    doc_1 =nlp(text)
 
     doc, sumario_dict, body_dict = build_dicts(nlp, text)
 
     sumario_list , sumario_group= sumario_dic(sumario_dict)
 
-    print(f"sumario_list:", sumario_list)
-    print(f"sumario_list:", len(sumario_list))
-    print(f"==========================================================================")
-    print(f"sumario_group:", sumario_group)
+    docs = classBuilder(body_dict, sumario_group)
 
+
+    #print(f"sumario_list:", sumario_list)
+    #print(f"sumario_list:", len(sumario_list))
+    #print(f"==========================================================================")
+    #print(f"sumario_group:", sumario_group)
+    #print("========================================================================")
+    #print(f"Body:", body_dict)
     #print(f"Teste:", sumario_dict)
     #print(f"======================================================================")
     #print(f"body_dicts:", body_dict)
 
     #print(len(sumario_dic(doc_sumario)))
 
-    html = displacy.render(doc, style = "ent", options= OPTIONS, page = True)
+    html = displacy.render(doc, style = "ent", options = OPTIONS, page = True)
     out_path = pathlib.Path("entities.html")
     out_path.write_text(html, encoding = "utf-8")
 

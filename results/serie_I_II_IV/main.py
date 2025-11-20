@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, TypedDict
-from .helper import _normalize_for_match_letters_only
+from .helper import _normalize_for_match_letters_only, _is_close_match, _norm_for_match
 
 
 class Entity(TypedDict):
@@ -35,11 +35,18 @@ class SumarioDoc:
 
         # will be filled later using `grouped`
         self.entities: Grouped = {}     # pos -> {text, label}
-        self.paragraphs: List[str] = []
-        self.signature: Optional[str] = None
+        self.paragraphs: List[str] = []          # para apagar???
+        self.signature: Optional[str] = None     # para apagar???
 
         self.header_start: Optional[int] = None
+
         self.next_header_texts: List[str] | None = None
+
+        # Optional
+        self.doc_end: Optional[int] = None   # exclusive
+        self.org_positions: List[int] = [] # positions of ORG_LABEL inside self.entities
+        self.doc_name_positions: List[int] = [] # positions of DOC_NAME_LABEL inside self. entities
+        
 
     def attach_from_grouped_slice(self, grouped: Grouped, start: int, end: int) -> None:
 
@@ -48,10 +55,10 @@ class SumarioDoc:
         preserving the original positional order for ALL labels
         """
 
-        # 1) Get positions in order within [start, end]
+        # 1) Get positions in order within [start, end), end is exclusive
         positions_in_slice = sorted(
             pos for pos in grouped.keys()
-            if start <= pos <= end
+            if start <= pos < end
         )
         # 2) Store entities in taht order
         # (dicts preserve insertion order in modern Python,  but we insert in sorted order explicitly)
@@ -74,8 +81,56 @@ class SumarioDoc:
                 signatures.append(text)
         
         self.signature = signatures[-1] if signatures else None
+    
+    def align_orgs_and_doc_names_from_entities(self) -> None:
+        self.org_positions = []
+        self.doc_name_positions = []
 
+        if not self.entities:
+            return
 
+        ORG_LABELS_FOR_MATCH = {"ORG_LABEL", "ORG_WITH_STAR_LABEL"}
+
+        org_candidates = [
+            (pos, ent["text"])
+            for pos, ent in self.entities.items()
+            if ent["label"] in ORG_LABELS_FOR_MATCH
+        ]
+
+        doc_name_candidates = [
+            (pos, ent["text"])
+            for pos, ent in self.entities.items()
+            if ent["label"] == "DOC_NAME_LABEL"
+        ]
+
+        used_org_positions: set[int] = set()
+        for expected in self.org_texts:
+            match_pos = None
+            for pos, text in org_candidates:
+                if pos in used_org_positions:
+                    continue
+                if _is_close_match(expected, text):
+                    match_pos = pos
+                    used_org_positions.add(pos)
+                    break
+            if match_pos is not None:
+                self.org_positions.append(match_pos)
+
+        used_doc_positions: set[int] = set()
+        for expected in self.doc_name:
+            match_pos = None
+            for pos, text in doc_name_candidates:
+                if pos in used_doc_positions:
+                    continue
+                if _is_close_match(expected, text):
+                    match_pos = pos
+                    used_doc_positions.add(pos)
+                    break
+            if match_pos is not None:
+                self.doc_name_positions.append(match_pos)
+
+    
+    
     def __repr__(self) -> str:
         return (
             f"SumarioDoc(idx={self.idx}, "
@@ -84,11 +139,14 @@ class SumarioDoc:
             f"doc_name={self.doc_name}, "
             f"doc_paragraph={self.doc_paragraph}, "
             f"header_start={self.header_start}, "
-            f"next_header_texts={self.next_header_texts})"
+            f"next_header_texts={self.next_header_texts}, "
+            f"entities={self.entities}, "
+            f"org_positions={self.org_positions}, "
+            f"doc_name_positions={self.doc_name_positions}, )"
         )
 
-        
 
+# ==============================================================================================================================================
 
 def build_sumario_docs_from_grouped_blocks(
     grouped_blocks: AllGroupedBlocks,
@@ -127,125 +185,114 @@ def build_sumario_docs_from_grouped_blocks(
     return docs
 
 
-
-
-def find_header_start_in_grouped_for_doc(
+def _find_header_run_start(
     grouped: Grouped,
-    doc: SumarioDoc,
+    header_texts: List[str],
 ) -> Optional[int]:
     """
-    Set and return the start position in `grouped` that corresponds to
-    doc.header_texts[0].
-
-    Logic:
-      - Only consider the FIRST contiguous run of ORG_WITH_STAR_LABEL in `grouped`.
-      - That run may contain:
-          * true header lines (first 1, 2, ...) and
-          * possibly extra ORG_WITH_STAR_LABEL lines that actually belong
-            to a normal org/company.
-      - We try prefixes of that run:
-          run[0], run[0:2], run[0:3], ...
-        and look for a prefix whose normalized text matches doc.header_texts[0]
-        (using _normalize_for_match_letters_only).
-
-      - If found, we set doc.header_start to the position of run[0] and return it.
-      - We do NOT decide the end here; the end of this doc will be determined
-        later from the next doc's header_start at the multi-doc level.
+    Find the start position in `grouped` where a contiguous run of
+    ORG_WITH_STAR_LABEL lines matches the given header_texts (as a whole).
+    Returns the first position of that run, or None if not found.
     """
-    # No header text in the doc → nothing to match
-    if not doc.header_texts:
+
+    if not header_texts:
+
         return None
 
-    # Normalize target header text from the class
-    header_target_raw = doc.header_texts[0]
-    header_target_norm = _normalize_for_match_letters_only(header_target_raw)
-    if not header_target_norm:
-        return None
+    target_raw = " ".join(header_texts)
+    target_norm = _normalize_for_match_letters_only(target_raw)
 
-    # No content to search
-    if not grouped:
+
+    if not target_norm or not grouped:
+        print("[DEBUG] no target_norm or empty grouped → return None")
         return None
 
     positions = sorted(grouped.keys())
+    n = len(positions)
+    i = 0
 
-    # 1) Find the first contiguous run of ORG_WITH_STAR_LABEL
-    run_positions: List[int] = []
-    started = False
+    while i < n:
+        pos = positions[i]
+        ent = grouped[pos]
+        label = ent["label"]
 
-    for pos in positions:
-        label = grouped[pos]["label"]
-        if label == "ORG_WITH_STAR_LABEL":
-            if not started:
-                started = True
-            run_positions.append(pos)
+        if label != "ORG_WITH_STAR_LABEL":
+            i += 1
+            continue
+
+        # collect this ORG_WITH_STAR_LABEL run
+        run_positions: List[int] = []
+        j = i
+        while j < n and grouped[positions[j]]["label"] == "ORG_WITH_STAR_LABEL":
+            run_positions.append(positions[j])
+            j += 1
+
+        joined_run = " ".join(grouped[p]["text"] for p in run_positions)
+        run_norm = _normalize_for_match_letters_only(joined_run)
+
+
+        if run_norm.startswith(target_norm):
+
+            return run_positions[0]
         else:
-            if started:
-                # we already started a run and hit a different label → stop
-                break
-            # else: we haven't started yet, keep scanning
+           pass
 
-    if not run_positions:
-        return None
+        # move past this run
+        i = j
 
-    # 2) Try prefixes of that run to find header match
-    start_pos = run_positions[0]
-
-    for prefix_len in range(1, len(run_positions) + 1):
-        subset = run_positions[:prefix_len]
-        joined_text = " ".join(grouped[p]["text"] for p in subset)
-        candidate_norm = _normalize_for_match_letters_only(joined_text)
-
-        if candidate_norm == header_target_norm:
-            # Found the header; we only care about its start
-            doc.header_start = start_pos
-            return start_pos
-
-    # No matching prefix found
     return None
+
+def compute_doc_bounds(
+    grouped: Grouped,
+    doc: SumarioDoc,
+) -> None:
+    if not grouped:
+        return
+
+    positions = sorted(grouped.keys())
+    max_pos = positions[-1]
+
+    # 1) start: where this doc's header is
+    start = _find_header_run_start(grouped, doc.header_texts)
+    doc.header_start = start
+
+    if start is None:
+        return
+
+    # 2) end: where the NEXT header begins (exclusive)
+    if doc.next_header_texts:
+        next_start = _find_header_run_start(grouped, doc.next_header_texts)
+
+        if next_start is not None and next_start > start:
+            doc.doc_end = next_start  # EXCLUSIVE
+        else:
+            doc.doc_end = max_pos + 1
+    else:
+        # last doc → until after the last position
+        doc.doc_end = max_pos + 1
+
 
 
 def assign_grouped_to_docs(grouped: Grouped, docs: List[SumarioDoc]) -> None:
     if not grouped or not docs:
         return
 
-    # CASE 1: Only one doc → whole grouped goes to that doc
-    if len(docs) == 1:
-        doc = docs[0]
-        min_pos = min(grouped.keys())
-        max_pos = max(grouped.keys())
-        doc.attach_from_grouped_slice(grouped, min_pos, max_pos)
-        return
-
-    # CASE 2: Multiple docs → use header_start positions
-    docs_with_start = [d for d in docs if d.header_start is not None]
-    if not docs_with_start:
-        return
-
-    docs_sorted = sorted(docs_with_start, key=lambda d: d.header_start)  # type: ignore[arg-type]
-    max_pos = max(grouped.keys())
-
-    for i, doc in enumerate(docs_sorted):
-        start = doc.header_start  # type: ignore[assignment]
-        if start is None:
-            continue
-
-        if i < len(docs_sorted) - 1:
-            next_start = docs_sorted[i + 1].header_start
-            end = (next_start - 1) if next_start is not None else max_pos
-        else:
-            end = max_pos
-
-        doc.attach_from_grouped_slice(grouped, start, end)
-
-
-
-def main(grouped , grouped_blocks: AllGroupedBlocks):
-    docs = build_sumario_docs_from_grouped_blocks(grouped_blocks)
     for doc in docs:
-        find_header_start_in_grouped_for_doc(grouped, doc)
-    
+        compute_doc_bounds(grouped, doc)
+
+    for doc in docs:
+        doc.attach_from_grouped_slice(grouped, doc.header_start, doc.doc_end)
+        
+        if doc.entities:
+            doc.align_orgs_and_doc_names_from_entities()
+
+
+
+def main(grouped: Grouped, grouped_blocks: AllGroupedBlocks):
+
+    docs = build_sumario_docs_from_grouped_blocks(grouped_blocks)
+
     assign_grouped_to_docs(grouped, docs)
 
-    print("Number of SumarioDoc instances:", len(docs))
     for d in docs:
         print(d)

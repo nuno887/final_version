@@ -358,7 +358,11 @@ def build_sumario_docs_from_grouped_blocks(
 
     for idx, block in grouped_blocks.items():
         header_texts = block.get("ORG_WITH_STAR_LABEL", [] or [])
+        header_texts = [h.replace("\n", " ").strip() for h in header_texts] # cleans the \n
+        
         org_texts = block.get("ORG_LABEL", [] or [])
+        org_texts = [h.replace("\n", " ").strip() for h in org_texts] # cleans the \n
+
         doc_names = block.get("DOC_NAME_LABEL", [] or [])
         paragraphs = block.get("PARAGRAPH", [] or [])
 

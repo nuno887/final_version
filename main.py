@@ -60,7 +60,7 @@ def build_dicts(nlp, full_text: str):
 
 
 def main():
-    PDF = Path(r"pdf_input\\ISerie-028-2020-02-14sup2.pdf")
+    PDF = Path(r"pdf_input\\IISerie-006-2020-01-09Supl.pdf")
 
 
     serie = is_serie(PDF.name)
@@ -75,19 +75,7 @@ def main():
 
     docs = classBuilder(body_dict, sumario_group)
 
-
-    #print(f"sumario_list:", sumario_list)
-    #print(f"sumario_list:", len(sumario_list))
-    #print(f"==========================================================================")
-    #print(f"sumario_group:", sumario_group)
-    #print("========================================================================")
-    #print(f"Body:", body_dict)
-    #print(f"Teste:", sumario_dict)
-    #print(f"======================================================================")
-    #print(f"body_dicts:", body_dict)
-
-    #print(len(sumario_dic(doc_sumario)))
-
+ 
     html = displacy.render(doc, style = "ent", options = OPTIONS, page = True)
     out_path = pathlib.Path("entities.html")
     out_path.write_text(html, encoding = "utf-8")

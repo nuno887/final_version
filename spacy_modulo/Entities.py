@@ -310,66 +310,6 @@ def docname_entity(doc):
         doc.ents = filter_spans(list(doc.ents) + spans)
     return doc
 
-# ===================================================
-BOLD_PATTERN = re.compile(r"\*\*(.+?)\*\*")
-
-@Language.component("docname_entity")
-def docname_entity(doc):
-    text = doc.text
-    spans = []
-
-    for m in BOLD_PATTERN.finditer(text):
-        outer_start, outer_end = m.span()
-        inner_start = outer_start + 2
-        inner_end = outer_end - 2
-
-        # find the full line containing this bold block
-        line_start = text.rfind("\n", 0, outer_start)
-        if line_start == -1:
-            line_start = 0
-        else:
-            line_start += 1  # move past the newline
-
-        line_end = text.find("\n", outer_end)
-        if line_end == -1:
-            line_end = len(text)
-
-        line = text[line_start:line_end]
-        line_stripped = line.strip()
-
-        # 1) If there's any non-space text before the ** on this line, skip.
-        before_bold = line[: outer_start - line_start]
-        if before_bold.strip():
-            # e.g. "- Secretária ... **", so NOT a doc name
-            continue
-
-        # 2) Keep the "exactly one bold pair on the line" rule if you want:
-        if line.count("**") != 2:
-            continue
-
-        # 3) (Optional) keep your semantic check if you still want it:
-        # inner = text[inner_start:inner_end]
-        # if (
-        #     _normalize_for_match(inner) not in KNOWN_DOC_NAMES_NORM
-        #     and not any(ch.isalpha() and ch.islower() for ch in inner)
-        # ):
-        #     continue
-
-        span = doc.char_span(
-            outer_start,
-            outer_end,
-            label="DOC_NAME_LABEL",
-            alignment_mode="contract",
-        )
-        if span is not None:
-            spans.append(span)
-
-    if spans:
-        doc.ents = filter_spans(list(doc.ents) + spans)
-    return doc
-
-# ===================================================
-
 
 
 _BOLD_PAIR_RE = re.compile(r"\*\*.+?\*\*", re.DOTALL)
@@ -527,50 +467,7 @@ def create_orglabel_to_paragraph_sanitizer(nlp, name):
 
 # ===================================================================================
 
-# ===================================================================================
-#resolves the probem in ISerie-031-2020-02-19sup.pdf (Sumario)
 
-
-@Language.factory("concat_doc_name_label")
-def create_concat_doc_name_label(nlp, name):
-    DOC_NAME = nlp.vocab.strings.add("DOC_NAME_LABEL")
-
-    def component(doc):
-        if not doc.ents:
-            return doc
-
-        ents = list(doc.ents)          # sorted by start
-        new_ents = []
-        i, n = 0, len(ents)
-
-        while i < n:
-            ent = ents[i]
-            if ent.label == DOC_NAME:
-                start = ent.start
-                end = ent.end
-                j = i + 1
-
-                # Merge ONLY if there's *only whitespace* between spans
-                while (
-                    j < n
-                    and ents[j].label == DOC_NAME
-                    and doc[end:ents[j].start].text.strip() == ""  # <-- key guard
-                ):
-                    end = ents[j].end
-                    j += 1
-
-                new_ents.append(Span(doc, start, end, label=DOC_NAME))
-                i = j
-            else:
-                new_ents.append(ent)
-                i += 1
-
-        doc.ents = tuple(new_ents)
-        return doc
-
-    return component
-
-# ===================================================================================
 @Language.factory("concat_ORG_WITH_STAR_label")
 def create_concat_doc_name_label(nlp, name):
     ORG_NAME = nlp.vocab.strings.add("ORG_WITH_STAR_LABEL")
@@ -656,21 +553,14 @@ def sumario_detector(doc: Doc) -> Doc:
 
 # ====================== Sumario (fim) =================================================================
 
-def setup_entities(nlp, Serie: Optional[int]):
+def setup_entities(nlp):
 
     ruler = nlp.add_pipe("entity_ruler", first = True)
     ruler.add_patterns(RULER_PATTERNS)
     nlp.add_pipe("sumario_detector")
     nlp.add_pipe("allcaps_entity")
-
-    if Serie == 3:
-        nlp.add_pipe("docname_entity_III")
-    else:
-        nlp.add_pipe("docname_entity")
-        nlp.add_pipe("concat_doc_name_label")
- 
+    nlp.add_pipe("docname_entity_III")
     nlp.add_pipe("doc_text_entity")
-
     nlp.add_pipe("paragraph_entity")
     nlp.add_pipe("paragraph_to_org_star")
     nlp.add_pipe("split_org_with_star")

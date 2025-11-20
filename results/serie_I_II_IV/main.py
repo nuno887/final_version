@@ -359,7 +359,7 @@ def build_sumario_docs_from_grouped_blocks(
     for idx, block in grouped_blocks.items():
         header_texts = block.get("ORG_WITH_STAR_LABEL", [] or [])
         header_texts = [h.replace("\n", " ").strip() for h in header_texts] # cleans the \n
-        
+
         org_texts = block.get("ORG_LABEL", [] or [])
         org_texts = [h.replace("\n", " ").strip() for h in org_texts] # cleans the \n
 
@@ -495,16 +495,18 @@ def assign_grouped_to_docs(grouped: Grouped, docs: List[SumarioDoc]) -> None:
             doc.align_orgs_and_doc_names_from_entities()
 
 
-
-
-def main(grouped: Grouped, grouped_blocks: AllGroupedBlocks):
+def main(
+    grouped: Grouped,
+    grouped_blocks: AllGroupedBlocks,
+) -> tuple[list[SumarioDoc], dict[int, list[DocEntry]]]:
 
     docs = build_sumario_docs_from_grouped_blocks(grouped_blocks)
-
     assign_grouped_to_docs(grouped, docs)
 
-    for d in docs:
+    all_orgs: dict[int, list[DocEntry]] = {}
 
+    for d in docs:
+        # optional debug
         print(
             f"[DEBUG] Doc {d.idx}: "
             f"header_start={d.header_start}, doc_end={d.doc_end}, "
@@ -512,6 +514,11 @@ def main(grouped: Grouped, grouped_blocks: AllGroupedBlocks):
             f"org_positions={d.org_positions}, "
             f"doc_name_positions={d.doc_name_positions}"
         )
-        
-        org = d.build_docs_by_org()
-        print("ORG_DICT:", org)
+
+        org_dict = d.build_docs_by_org()
+
+        # merge per-doc dict into global dict
+        for org_idx, entries in org_dict.items():
+            all_orgs.setdefault(org_idx, []).extend(entries)
+
+    return docs, all_orgs

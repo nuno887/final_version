@@ -4,11 +4,12 @@ from .SerieIV.setupIV import setup_entitiesIV
 from typing import Optional
 
 
-def get_nlp(Serie: Optional[int]):
+def get_nlp(Serie: bool):
     exclude = ["ner"]
     nlp = spacy.load("pt_core_news_lg", exclude=exclude)
-    if Serie == 4:
-        setup_entitiesIV(nlp)
+    if Serie:
+        setup_entities(nlp)
     else:
-        setup_entities(nlp, Serie)
+        setup_entitiesIV(nlp)
+        
     return nlp

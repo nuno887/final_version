@@ -13,8 +13,9 @@ import json
 from split_text import split_text
 from pdf_markup import extract_pdf_to_markdown
 from spacy_modulo import get_nlp, setup_entities, setup_entitiesIV
-from relation_extractor_02 import sumario_dic
-from results import build_sumario_docs_from_grouped_blocks, classBuilder
+from relation_extractor_02 import sumario_dic, has_letters_ignoring_newlines, clean_sumario, sumario_to_blocks
+from results import build_sumario_docs_from_grouped_blocks, classBuilder, classBuilder_III
+
 
 OPTIONS = {"colors": {
     "Sumario": "#ffd166",
@@ -31,14 +32,10 @@ OPTIONS = {"colors": {
 def is_serie(filename: str) -> Optional[int]:
 
     if "iiiserie" in filename.lower():
-        return 3
-    if "iiserie" in filename.lower():
-        return 4
-    if "iserie" in filename.lower():
-        return 4
-    if "ivserie" in filename.lower():
-        return 4
-    return None
+        return True
+    else:
+        return False
+
 
 
 def build_dicts(nlp, full_text: str):
@@ -60,21 +57,27 @@ def build_dicts(nlp, full_text: str):
 
 
 def main():
-    PDF = Path(r"pdf_input\\IISerie-006-2020-01-09Supl.pdf")
+    PDF = Path(r"pdf_input\\IIISerie-09-2021-05-19.pdf")
 
 
     serie = is_serie(PDF.name)
     nlp = get_nlp(serie)
     text = extract_pdf_to_markdown(PDF)
-    
     nlp.max_lengt = max(nlp.max_length, len(text) + 1)
+    if serie:
+        doc, sumario_dict, body_dict = build_dicts(nlp, text)
+        cleaned = clean_sumario(sumario_dict)
+        blocks = sumario_to_blocks(cleaned)
 
-    doc, sumario_dict, body_dict = build_dicts(nlp, text)
+        alldocs = classBuilder_III(blocks, body_dict)
+        print(alldocs)
 
-    sumario_list , sumario_group= sumario_dic(sumario_dict)
-
-    docs = classBuilder(body_dict, sumario_group)
-
+    
+    else:
+        doc, sumario_dict, body_dict = build_dicts(nlp, text)
+        sumario_list , sumario_group= sumario_dic(sumario_dict)
+        docs, all_orgs = classBuilder(body_dict, sumario_group)
+        print(all_orgs)
  
     html = displacy.render(doc, style = "ent", options = OPTIONS, page = True)
     out_path = pathlib.Path("entities.html")

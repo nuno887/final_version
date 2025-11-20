@@ -167,6 +167,15 @@ class SumarioDoc:
                 # store (position, index of expected doc_name)
                 self.doc_name_positions.append((match_pos, expected_idx))
 
+        # --- Fallback for blocks where no org matched ---
+        # Example: header is one big ORG_LABEL in grouped_blocks,
+        # but in grouped it's split into several ORG_WITH_STAR_LABEL lines.
+        # If we have a known header_start and at least one org_text,
+        # treat header_start as the org anchor for org_idx 0.
+        if not self.org_positions and self.header_start is not None and self.org_texts:
+            self.org_positions.append((self.header_start, 0))
+
+
     def build_docs_by_org(self) -> Dict[int, List[DocEntry]]:
         """
         Build a mapping:
@@ -348,10 +357,14 @@ def build_sumario_docs_from_grouped_blocks(
     docs: List[SumarioDoc] = []
 
     for idx, block in grouped_blocks.items():
-        header_texts = block.get("ORG_WITH_STAR_LABEL", [])
-        org_texts = block.get("ORG_LABEL", [])
-        doc_names = block.get("DOC_NAME_LABEL", [])
-        paragraphs = block.get("PARAGRAPH", [])
+        header_texts = block.get("ORG_WITH_STAR_LABEL", [] or [])
+        org_texts = block.get("ORG_LABEL", [] or [])
+        doc_names = block.get("DOC_NAME_LABEL", [] or [])
+        paragraphs = block.get("PARAGRAPH", [] or [])
+
+        # Fallback: some docs only have ORG_LABEL, no ORG_with_STAR_LABEL
+        if not header_texts and org_texts:
+            header_texts = org_texts
 
         doc = SumarioDoc(
             idx=idx,
@@ -395,19 +408,21 @@ def _find_header_run_start(
     n = len(positions)
     i = 0
 
+    ORG_HEADER_LABELS = {"ORG_WITH_STAR_LABEL", "ORG_LABEL"}
+
     while i < n:
         pos = positions[i]
         ent = grouped[pos]
         label = ent["label"]
 
-        if label != "ORG_WITH_STAR_LABEL":
+        if label not in ORG_HEADER_LABELS:
             i += 1
             continue
 
-        # collect this ORG_WITH_STAR_LABEL run
+        # collect this header run (ORG_WITH_STAR_LABEL and/or ORG_LABEL)
         run_positions: List[int] = []
         j = i
-        while j < n and grouped[positions[j]]["label"] == "ORG_WITH_STAR_LABEL":
+        while j < n and grouped[positions[j]]["label"] in ORG_HEADER_LABELS:
             run_positions.append(positions[j])
             j += 1
 
@@ -465,10 +480,16 @@ def assign_grouped_to_docs(grouped: Grouped, docs: List[SumarioDoc]) -> None:
         compute_doc_bounds(grouped, doc)
 
     for doc in docs:
+        if doc.header_start is None or doc.doc_end is None:
+            # Optional debug:
+            print(f"[WARN] Skipping doc {doc.idx}: header_start={doc.header_start}, doc_end={doc.doc_end}")
+            continue
+
         doc.attach_from_grouped_slice(grouped, doc.header_start, doc.doc_end)
-        
+
         if doc.entities:
             doc.align_orgs_and_doc_names_from_entities()
+
 
 
 
@@ -479,5 +500,14 @@ def main(grouped: Grouped, grouped_blocks: AllGroupedBlocks):
     assign_grouped_to_docs(grouped, docs)
 
     for d in docs:
+
+        print(
+            f"[DEBUG] Doc {d.idx}: "
+            f"header_start={d.header_start}, doc_end={d.doc_end}, "
+            f"entities={len(d.entities)}, "
+            f"org_positions={d.org_positions}, "
+            f"doc_name_positions={d.doc_name_positions}"
+        )
+        
         org = d.build_docs_by_org()
-        print(org)
+        print("ORG_DICT:", org)

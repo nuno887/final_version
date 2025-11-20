@@ -15,14 +15,22 @@ def _normalize_for_match_letters_only(s: str) -> str:
 
 
 def _norm_for_match(s: str) -> str:
-    # If you already have _normalize_for_match_letters_only, you can reuse it
     return _normalize_for_match_letters_only(s or "")
 
-def _is_close_match(a: str, b: str, *, prefix_threshold: float = 0.85) -> bool:
+
+def _is_close_match(
+    a: str,
+    b: str,
+    *,
+    prefix_threshold: float = 0.85,
+    contain_threshold: float = 0.6,
+) -> bool:
     """
     Returns True if a and b are "close enough" after normalization.
     - First tries strict equality.
-    - Then falls back to a long common-prefix ratio.
+    - Then a long common-prefix ratio.
+    - Then a containment check: shorter is substring of longer
+      and is at least `contain_threshold` fraction of it.
     """
     na = _norm_for_match(a)
     nb = _norm_for_match(b)
@@ -34,12 +42,25 @@ def _is_close_match(a: str, b: str, *, prefix_threshold: float = 0.85) -> bool:
     if na == nb:
         return True
 
-    # 2) large common prefix (e.g. only suffix differs: ABERTO vs FECHADO)
+    # 2) large common prefix
     common_len = len(os.path.commonprefix([na, nb]))
     longest = max(len(na), len(nb))
     if longest == 0:
         return False
 
     prefix_ratio = common_len / float(longest)
-    return prefix_ratio >= prefix_threshold
+    if prefix_ratio >= prefix_threshold:
+        return True
 
+    # 3) containment: shorter fully inside longer with enough coverage
+    if len(na) < len(nb):
+        shorter, longer = na, nb
+    else:
+        shorter, longer = nb, na
+
+    if shorter and shorter in longer:
+        contain_ratio = len(shorter) / float(len(longer))
+        if contain_ratio >= contain_threshold:
+            return True
+
+    return False

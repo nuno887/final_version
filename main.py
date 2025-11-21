@@ -57,13 +57,13 @@ def build_dicts(nlp, full_text: str):
 
 
 def main():
-    PDF = Path(r"pdf_input\\IIISerie-09-2021-05-19.pdf")
+    PDF = Path(r"pdf_input\\IIISerie-14-2020-07-28.pdf")
 
 
     serie = is_serie(PDF.name)
     nlp = get_nlp(serie)
     text = extract_pdf_to_markdown(PDF)
-    nlp.max_lengt = max(nlp.max_length, len(text) + 1)
+    nlp.max_length = max(nlp.max_length, len(text) + 1)
     if serie:
         doc, sumario_dict, body_dict = build_dicts(nlp, text)
         cleaned = clean_sumario(sumario_dict)

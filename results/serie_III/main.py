@@ -85,25 +85,15 @@ class SumarioDoc:
     #===================================================================================
 
     def build_sections(self) -> None:
-        """
-        Build internal sections structure:
-
-            self.sections: List[Section]
-
-        Each Section groups DOC_PARAGRAPH docs under one DOC_NAME title.
-        Titles with no paragraphs are ignored.
-        """
         self.sections: List[Section] = []
 
         if not self.body_entries:
             return
 
-        # maps from body idx -> (sumário_text, body_text) for titles
         name_by_pos: Dict[int, tuple[str, str]] = {
             idx: (sum_text, body_text)
             for (sum_text, idx, body_text) in self.doc_name_matches
         }
-        # maps from body idx -> sumário_text for paragraph docs
         para_by_pos: Dict[int, str] = {
             idx: sum_text for (sum_text, idx, _body_text) in self.doc_paragraph_matches
         }
@@ -115,27 +105,28 @@ class SumarioDoc:
         title_positions = sorted(self.doc_name_positions)
         para_positions = sorted(self.doc_paragraph_positions)
 
+        # if no paragraphs were matched, use the titles as anchors
+        if not para_positions:
+            para_positions = title_positions
+
         if not title_positions and not para_positions:
             return
 
         for i, title_pos in enumerate(title_positions):
-            # title metadata
             title_sumario, title_body = name_by_pos.get(
                 title_pos, ("", self.body_entries[title_pos]["text"])
             )
 
-            # section end boundary = next title or end of org block
             if i + 1 < len(title_positions):
                 section_end = title_positions[i + 1]
             else:
-                section_end = max(all_body_indices) + 1  # sentinel
+                section_end = max(all_body_indices) + 1
 
-            # paragraphs for this section
             my_para_positions = [
                 p for p in para_positions if title_pos <= p < section_end
             ]
 
-            # ignore titles with no paragraph docs
+            # with the fallback above, this should almost never be empty now
             if not my_para_positions:
                 continue
 
@@ -156,6 +147,7 @@ class SumarioDoc:
                 if not doc_indices:
                     continue
 
+                # if start_pos came from a title (fallback), this will just be ""
                 sumario_text = para_by_pos.get(start_pos, "")
 
                 docs_in_section.append(
@@ -178,6 +170,7 @@ class SumarioDoc:
                     docs=docs_in_section,
                 )
             )
+
 
     def to_flat_docs(self) -> List[ExportDoc]:
         """
@@ -229,7 +222,7 @@ class SumarioDoc:
         docname_entries: List[tuple[int, str]] = []
         for idx in sorted(self.body_entries.keys()):
             entry = self.body_entries[idx]
-            if entry.get("label") == "DOC_NAME_LABEL":
+            if entry.get("label") in ["DOC_NAME_LABEL", "ORG_LABEL", "ORG_WITH_STAR_LABEL"]:
                 docname_entries.append((idx, entry.get("text", "")))
 
         if not docname_entries:

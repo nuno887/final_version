@@ -57,7 +57,7 @@ def build_dicts(nlp, full_text: str):
 
 
 def main():
-    PDF = Path(r"pdf_input\\ISerie-031-2020-02-19.pdf")
+    PDF = Path(r"pdf_input\\ISerie-029-2020-02-17sup.pdf")
 
 
     serie = is_serie(PDF.name)

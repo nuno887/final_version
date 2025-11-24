@@ -504,6 +504,10 @@ def main(
     assign_grouped_to_docs(grouped, docs)
 
     all_orgs: dict[int, list[DocEntry]] = {}
+    #print(f"grouped:", grouped)
+    #print(f"grouped_blocks:", grouped_blocks)
+    #print("============================================================")
+    #print("============================================================")
 
     for d in docs:
         # optional debug

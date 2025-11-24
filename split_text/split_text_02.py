@@ -96,12 +96,20 @@ def _find_next_matching_org(indexed_entity_dict, target_org_text, position_org):
                 text_to_normalize = text.strip()
                 normalized_current = _normalize_for_match_letters_only(text_to_normalize)
                 
-                # Check for substring match in either direction
+                """
+                # Check for substring match in either direction problemas in the file ISerie-029-2020-02-17sup.pdf
                 if (normalized_target in normalized_current) or \
                    (normalized_current in normalized_target):
                     
                     next_match_position = position
                     break
+                """
+                if (
+                    normalized_current.startswith(normalized_target) or normalized_target.startswith(normalized_current)
+                ):
+                    next_match_position = position
+                    break
+
 
     if next_match_position is None:
         raise ValueError(

@@ -76,40 +76,55 @@ def _find_next_matching_org(indexed_entity_dict, target_org_text, position_org):
     # 1. Define the labels to search for
     target_labels = ["ORG_WITH_STAR_LABEL", "ORG_LABEL"]
 
-    # 2. Search for the next entity starting AFTER position_org
     sorted_positions = sorted(indexed_entity_dict.keys())
-    for position in sorted_positions:
-        if position_org is None:
-            raise ValueError(
-                f"Cannot proceed: The starting organization text ('{target_org_text}') "
-                "was found, but its position ('position_org') is invalid or missing. "
-                "Check the preceding '_find_org_after_last_sumario' function."
-            )
 
-        if position > position_org:
+    if position_org is None:
+        raise ValueError(
+            f"Cannot proceed: The starting organization text ('{target_org_text}') "
+            "was found, but its position ('position_org') is invalid or missing. "
+            "Check the preceding '_find_org_after_last_sumario' function."
+        )
+
+    # ----- FIRST PASS: safer prefix-based matching -----
+    for position in sorted_positions:
+        if position <= position_org:
+            continue
+
+        entity_entry = indexed_entity_dict[position]
+        text = entity_entry['text']
+        label = entity_entry['label']
+        
+        if label in target_labels:
+            text_to_normalize = text.strip()
+            normalized_current = _normalize_for_match_letters_only(text_to_normalize)
+            
+            # Match must start at the beginning in at least one direction
+            if (
+                normalized_current.startswith(normalized_target) or
+                normalized_target.startswith(normalized_current)
+            ):
+                next_match_position = position
+                break
+
+    # ----- SECOND PASS (FALLBACK): original substring logic -----
+    if next_match_position is None:
+        for position in sorted_positions:
+            if position <= position_org:
+                continue
+
             entity_entry = indexed_entity_dict[position]
             text = entity_entry['text']
             label = entity_entry['label']
-            
+
             if label in target_labels:
-                # 3. Check for text match using the normalization function
                 text_to_normalize = text.strip()
                 normalized_current = _normalize_for_match_letters_only(text_to_normalize)
-                
-                """
-                # Check for substring match in either direction problemas in the file ISerie-029-2020-02-17sup.pdf
+
+                # Old behavior: substring either way
                 if (normalized_target in normalized_current) or \
                    (normalized_current in normalized_target):
-                    
                     next_match_position = position
                     break
-                """
-                if (
-                    normalized_current.startswith(normalized_target) or normalized_target.startswith(normalized_current)
-                ):
-                    next_match_position = position
-                    break
-
 
     if next_match_position is None:
         raise ValueError(
@@ -121,15 +136,14 @@ def _find_next_matching_org(indexed_entity_dict, target_org_text, position_org):
     body_dict = {}
 
     # If a match was found, slice the dictionary up to (but excluding) the match position
-    if next_match_position is not None:
-        for position in sorted_positions:
-            if position >= position_org and position < next_match_position:
-                sumario_dict[position] = indexed_entity_dict[position]
-            elif position >= next_match_position:
-                body_dict[position] = indexed_entity_dict[position]
+    for position in sorted_positions:
+        if position >= position_org and position < next_match_position:
+            sumario_dict[position] = indexed_entity_dict[position]
+        elif position >= next_match_position:
+            body_dict[position] = indexed_entity_dict[position]
             
-
     return sumario_dict, body_dict
+
 
 def _merge_adjacent_star_orgs_in_dict(segment_dict: Dict[int, Dict[str, str]]) -> Dict[int, Dict[str, str]]:
     """

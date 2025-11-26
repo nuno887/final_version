@@ -317,7 +317,7 @@ class SumarioDoc:
                 "org_idx": org_idx_for_segment,
                 "org_name": org_name,
                 "doc_name": doc_name_text,
-                "segment_text": segment_text,
+                "body": segment_text,
             }
 
             docs_by_org.setdefault(org_idx_for_segment, []).append(entry)

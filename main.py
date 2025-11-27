@@ -168,6 +168,10 @@ def process_pdf(pdf: Path):
 
     # Try to render HTML with displacy, but don't let it crash the program
     try:
+        print(sumario_dict)
+        print("========================================" \
+        "===================================================")
+        print(body_dict)
         html = displacy.render(doc, style="ent", options=OPTIONS, page=True)
         out_path = pathlib.Path("entities.html")
         out_path.write_text(html, encoding="utf-8")
@@ -181,7 +185,7 @@ def process_pdf(pdf: Path):
 
 
 def main():
-    pdf = Path(r"pdf_input\\IISerie-150-2025-08-22Supl2.pdf")
+    pdf = Path(r"pdf_input\\IIISerie-15-2020-08-04.pdf")
     result = process_pdf(pdf)
     print(result)
 

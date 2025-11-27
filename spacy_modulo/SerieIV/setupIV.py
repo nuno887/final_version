@@ -514,6 +514,49 @@ def create_orglabel_prohibited_words_demoter(nlp, name, words):
     return component
 # ================================= orglabel_prohibited_words_demoter (fim) =================================
 
+@Language.component("suplemento_to_sumario")
+def suplemento_to_sumario(doc: Doc) -> Doc:
+    """
+    Custom spaCy component to relabel entities.
+    
+    Looks for entities labeled 'DOC_NAME_LABEL' that contain the word 'Suplemento'
+    (case-insensitive) and changes their label to 'Sumario'. This is useful if 
+    'Suplemento' documents should be treated as summary boundaries.
+    The logic has been made more robust by cleaning the entity text aggressively 
+    to handle formatting characters (like *, #) and non-standard whitespace.
+    """
+    new_ents = []
+    
+    for ent in doc.ents:
+        if ent.label_ == "DOC_NAME_LABEL":
+            # --- Robust Text Sanitization ---
+            # 1. Convert to lowercase
+            text_lower = ent.text.lower()
+            # 2. Remove common markdown/formatting characters that might interfere with matching
+            text_sanitized = re.sub(r'[#*]', '', text_lower)
+            # 3. Replace any sequence of whitespace (including newlines and non-breaking spaces) 
+            #    with a single space, and strip leading/trailing space.
+            text_cleaned = re.sub(r'\s+', ' ', text_sanitized).strip()
+            
+            # Check if the cleaned text contains "suplemento"
+            if "suplemento" in text_cleaned:
+                # Create a new Span with the changed label ("Sumario")
+                # FIX: Use the Span constructor instead of doc.span()
+                new_ent = Span(doc, ent.start, ent.end, label="Sumario")
+                new_ents.append(new_ent)
+            else:
+                # Keep entities with DOC_NAME_LABEL that do not contain "suplemento"
+                new_ents.append(ent)
+        else:
+            # Keep all other labels unchanged
+            new_ents.append(ent)
+            
+    # Assign the updated list of entities back to doc.ents
+    doc.ents = new_ents
+    
+    return doc
+
+
 def setup_entitiesIV(nlp):
 
    # ruler = nlp.add_pipe("entity_ruler", first = True)
@@ -548,6 +591,7 @@ def setup_entitiesIV(nlp):
         "DESIGNACAO"
         ]}
 )
+    nlp.add_pipe("suplemento_to_sumario", after="orglabel_prohibited_words_demoter")
 
 
         

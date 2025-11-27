@@ -30,7 +30,7 @@ RULER_PATTERNS = [
    {"TEXT": {"IN": ["Sumário", "Sumario"]}},
    {"ORTH": ":", "OP": "!"}
  ]},
- {"label": "JUNK_LABEL", "pattern": "## **Suplemento**"},
+
 
 {"label": "SERIE_III", "pattern": "**Regulamentação do Trabalho**"},
 {"label": "SERIE_III", "pattern": "** Direção Regional do Trabalho e da Ação Inspetiva**"},
@@ -551,7 +551,12 @@ def sumario_detector(doc: Doc) -> Doc:
         doc.ents = filter_spans(list(doc.ents) + spans)
     return doc
 
+
+
 # ====================== Sumario (fim) =================================================================
+
+
+
 
 def setup_entities(nlp):
 
@@ -566,6 +571,7 @@ def setup_entities(nlp):
     nlp.add_pipe("split_org_with_star")
     nlp.add_pipe("orglabel_to_paragraph_sanitizer")
     nlp.add_pipe("concat_ORG_WITH_STAR_label")
+   
 
   
 

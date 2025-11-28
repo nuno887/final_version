@@ -85,7 +85,105 @@ This module contains functions to fix common structural errors introduced during
 * **merge_bold_runs_table_safe(md)**: This is a post-processing cleanup. It looks for consecutive lines that are entirely bold <code>(e.g., **TITLE**\n**SECTION**)</code> and merges them into a single bold block <code>(**TITLE\nSECTION**)</code>, as long as they are not inside a table.
 * **merge_bold_runs_table_safe_allcaps(md)**: A stricter version of the bold merge that only consolidates consecutive bold lines if the content is also entirely **ALL-CAPS**. This is a more targeted approach to merging titles and headers while minimizing the risk of incorrectly combining normal bold text.
 
+## spacy_modulo (Defining the Entities in the text)
 
+<table>
+  <thead>
+    <tr>
+      <th>Entity Label</th>
+      <th>Example</th>
+      <th>Definition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sumario</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>ORG_LABEL</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>ORG_WITH_STAR_LABEL</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>DOC_NAME_LABEL</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>DOC_TEXT</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>PARAGRAPH</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>JUNK_LABEL</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>SERIE_III</td>
+      <td></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+This modulo handles the classification of the text so we don't need to work with raw text, that way we don't need to worry about every time we make a comparation, division of the text, etc with the text. For a better classification, we created 2 spacy pipelines, one for the **Series (I, II, IV)** and another for the **Serie III**.
+
+To work with the pipelines we need to search for the def setup_entities, present in the (spacy_modulo/SerieIV/setupIV.py) and (spacy_modulo/Entities.py):
+
+### Notes:
+* Each **nlp.add_pipe**, represents a classification rule, and the order matters, some of the pipes modify the changes that came before.
+
+
+## split_text (Devides the Sumario from the Body of the document)
+
+This module contains utility functionality for cleaning, normalizing nad segmentating labeled entities extracted from a document (labeled by the spaCy). It's designed to separate the text from the summary information from its main textual content.
+
+### Core Features
+*  **String Normalization**: Cleans and standardizes text strings for comparison, ignoring common variations like accents, case, and whitespace.
+*  **Entity Segmentation**: Splits a list of indexed entities into two distinct segments: a **Summary** and the **Document Body**
+*  **Organization Merging**: Combines fragmented organization names into single, coherent entities.
+
+<table>
+  <thead>
+    <tr>
+      <th>Function</th>
+      <th>Purpose</th>
+      <th>Semantics</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_normalize_for_match_letters_only(s)</code></td>
+      <td>Used primarily for<br><strong>ORG_LABEL/ORG_WITH_STAR_LABEL</strong><br>matching.</td>
+      <td>Converts to lowercase, removes, accents, removes all whitespace, and keeps <strong>only alphabetics characters</strong>.</td>
+    </tr>
+     <tr>
+      <td><code>_normalize_for_match_letters_and_digits(s)</code></td>
+      <td>Used for<br><strong>DOC_NAME_LABEL</strong><br>matching.</td>
+      <td>Same as above, but keeps <strong>both letters and digits</strong> (e.g., to preserve document numbers like "Portaria 123").</td>
+    </tr>
+
+  </tbody>
+</table>
+
+**Notes** 
+* The **sumario_dict_merged**, represent a dict of list, where we have labeled all the entities that the spaCy found, with the respective order in the original text. This section represents the summary.
+* The **body_dict**, represent a dict of list, where we have labeled all the entities that the spaCy found, with the respective order in the original text. This section represents the body text.
+* The function "_normalize_for_match_letters_and_digits(s)", for the pdf's where whe don't have the name of the organization in present in the body. We can consider this cases a error by the part of the author of the pdf.
+    *  Important for the rest of the next modulos to work, we need to add that organization to the body segment, at the top of the **"body_dict"**.
 
 
 

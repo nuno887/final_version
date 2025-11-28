@@ -186,6 +186,12 @@ This module contains utility functionality for cleaning, normalizing nad segment
     *  Important for the rest of the next modulos to work, we need to add that organization to the body segment, at the top of the **"body_dict"**.
 
 
+## relation_extractor_02 (organization of the sumario_dict_merged)
+
+This is a simple modulo that i made just for having a more organized **sumario_dict_merged**, we group the organizations with their respective sub-organizations/documento. That way we get the schema for the **body_dict** (body section), and we have a schema for dividing it in a concrete way. Important we can consider this the source of truth, but there are some pdf's that don't respect the order of the summary, not all the items in the summary are in the text, for this we will try to reslve in the next modulo **"results"**.
+
+
+
 
 
 

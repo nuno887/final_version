@@ -40,7 +40,7 @@ def extract_pdf_to_markdown(
         )
         parts.append(md)
 
-    full_md = "\n\n---\n\n".join(parts)
+    full_md = "\n\n\n\n".join(parts)
 
     # 1) Always: merge ALL-CAPS bold-only runs (handles CONSERVATÓRIA ... DO FUNCHAL)
     full_md = merge_bold_runs_table_safe_allcaps(full_md)

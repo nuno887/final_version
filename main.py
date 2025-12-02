@@ -32,11 +32,48 @@ OPTIONS = {
 }
 
 
-def is_serie(filename: str) -> Optional[int]:
-    if "iiiserie" in filename.lower():
-        return True
-    else:
-        return False
+def is_serie(filename: str) -> bool:
+    return "iiiserie" in filename.lower()
+
+
+def make_error_result(
+    message: str,
+    stage: str,
+    pdf: Optional[Path] = None,
+    raw_text: Optional[str] = None,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Build the global result structure when something goes wrong.
+    docs is always an empty list in this case.
+    """
+    error: Dict[str, Any] = {
+        "stage": stage,          # e.g. "extract_pdf", "nlp", "split_text"
+        "message": message,
+        "pdf": str(pdf) if pdf else None,
+    }
+    if extra:
+        error.update(extra)
+
+    return {
+        "error": error,
+        "raw_text": raw_text,
+        "docs": [],
+    }
+
+
+def make_ok_result(
+    raw_text: str,
+    docs: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Build the global result structure for the success path.
+    """
+    return {
+        "error": None,
+        "raw_text": raw_text,
+        "docs": docs,
+    }
 
 
 def normalize_serie_iii_docs(raw_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -118,7 +155,7 @@ def build_dicts(nlp, full_text: str):
     return doc, sumario_dict, body_dict
 
 
-def process_pdf(pdf: Path):
+def process_pdf(pdf: Path) -> Dict[str, Any]:
     serie = is_serie(pdf.name)
     nlp = get_nlp(serie)
 
@@ -127,11 +164,23 @@ def process_pdf(pdf: Path):
         text = extract_pdf_to_markdown(pdf)
     except MemoryError:
         print(f"⚠ MemoryError while extracting text from PDF {pdf}. Skipping this file.")
-        return []
+        return make_error_result(
+            "MemoryError while extracting text from PDF",
+            stage="extract_pdf",
+            pdf=pdf,
+            raw_text=None,
+        )
     except Exception as e:
         print(f"❌ Error extracting text from PDF {pdf}:")
         print(repr(e))
-        return []
+        return make_error_result(
+            f"Unexpected exception during PDF extraction: {repr(e)}",
+            stage="extract_pdf",
+            pdf=pdf,
+            raw_text=None,
+        )
+
+    raw_text = text  # keep it for the final result
 
     # Optionally keep this; it only bypasses spaCy's length guard, not memory limits
     nlp.max_length = max(nlp.max_length, len(text) + 1)
@@ -141,14 +190,25 @@ def process_pdf(pdf: Path):
 
     # If we failed due to MemoryError or other critical issue, bail out cleanly
     if doc is None:
-        print(f"⚠ Skipping PDF {pdf} due to processing error.")
-        return []
+        print(f"⚠ Skipping PDF {pdf} due to processing error (doc is None).")
+        return make_error_result(
+            "spaCy processing failed (doc is None)",
+            stage="nlp",
+            pdf=pdf,
+            raw_text=raw_text,
+        )
 
     # Handle III série
     if serie:
         if sumario_dict is None or body_dict is None:
             print(f"⚠ Skipping III série PDF {pdf}: missing sumário/body dict.")
-            return []
+            return make_error_result(
+                "Missing sumário_dict or body_dict after split_text for III série",
+                stage="split_text",
+                pdf=pdf,
+                raw_text=raw_text,
+                extra={"serie": "III"},
+            )
 
         cleaned = clean_sumario(sumario_dict)
         blocks = sumario_to_blocks(cleaned)
@@ -160,7 +220,13 @@ def process_pdf(pdf: Path):
     else:
         if sumario_dict is None or body_dict is None:
             print(f"⚠ Skipping non-III série PDF {pdf}: missing sumário/body dict.")
-            return []
+            return make_error_result(
+                "Missing sumário_dict or body_dict after split_text for non-III série",
+                stage="split_text",
+                pdf=pdf,
+                raw_text=raw_text,
+                extra={"serie": "OTHER"},
+            )
 
         sumario_list, sumario_group = sumario_dic(sumario_dict)
         docs, all_orgs = classBuilder(body_dict, sumario_group)
@@ -168,10 +234,10 @@ def process_pdf(pdf: Path):
 
     # Try to render HTML with displacy, but don't let it crash the program
     try:
-        print(sumario_dict)
-        print("========================================" \
-        "===================================================")
-        print(body_dict)
+        #print(sumario_dict)
+        #print("========================================"
+        #      "===================================================")
+        #print(body_dict)
         html = displacy.render(doc, style="ent", options=OPTIONS, page=True)
         out_path = pathlib.Path("entities.html")
         out_path.write_text(html, encoding="utf-8")
@@ -181,11 +247,12 @@ def process_pdf(pdf: Path):
         print("❌ Error while rendering / writing displacy HTML:")
         print(repr(e))
 
-    return docs_normalized
+    # Success case
+    return make_ok_result(raw_text=raw_text, docs=docs_normalized)
 
 
 def main():
-    pdf = Path(r"pdf_input\\IIISerie-15-2020-08-04.pdf")
+    pdf = Path(r"pdf_input\\IIISerie-09-2020-05-26.pdf")
     result = process_pdf(pdf)
     print(result)
 

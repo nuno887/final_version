@@ -39,6 +39,7 @@ def is_serie(filename: str) -> bool:
 def make_error_result(
     message: str,
     stage: str,
+    code: str,
     pdf: Optional[Path] = None,
     raw_text: Optional[str] = None,
     extra: Optional[Dict[str, Any]] = None,
@@ -49,6 +50,7 @@ def make_error_result(
     """
     error: Dict[str, Any] = {
         "stage": stage,          # e.g. "extract_pdf", "nlp", "split_text"
+        "code": code,            # e.g. "memory_error", "unexpected_exception"
         "message": message,
         "pdf": str(pdf) if pdf else None,
     }
@@ -167,6 +169,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
         return make_error_result(
             "MemoryError while extracting text from PDF",
             stage="extract_pdf",
+            code="memory_error",
             pdf=pdf,
             raw_text=None,
         )
@@ -176,6 +179,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
         return make_error_result(
             f"Unexpected exception during PDF extraction: {repr(e)}",
             stage="extract_pdf",
+            code="unexpected_exception",
             pdf=pdf,
             raw_text=None,
         )
@@ -194,6 +198,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
         return make_error_result(
             "spaCy processing failed (doc is None)",
             stage="nlp",
+            code="doc_is_none",
             pdf=pdf,
             raw_text=raw_text,
         )
@@ -205,6 +210,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
             return make_error_result(
                 "Missing sumário_dict or body_dict after split_text for III série",
                 stage="split_text",
+                code="missing_sumario_or_body",
                 pdf=pdf,
                 raw_text=raw_text,
                 extra={"serie": "III"},
@@ -223,6 +229,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
             return make_error_result(
                 "Missing sumário_dict or body_dict after split_text for non-III série",
                 stage="split_text",
+                code="missing_sumario_or_body",
                 pdf=pdf,
                 raw_text=raw_text,
                 extra={"serie": "OTHER"},
@@ -232,7 +239,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
         docs, all_orgs = classBuilder(body_dict, sumario_group)
         docs_normalized = normalize_other_docs(all_orgs)
 
-    # Try to render HTML with displacy, but don't let it crash the program
+    # displacy/render errors are ignored for the `error` field (only logged for you)
     try:
         #print(sumario_dict)
         #print("========================================"
@@ -252,7 +259,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
 
 
 def main():
-    pdf = Path(r"pdf_input\\IIISerie-09-2020-05-26.pdf")
+    pdf = Path(r"pdf_input\\IVSerie-020-2020-07-06.pdf")
     result = process_pdf(pdf)
     print(result)
 

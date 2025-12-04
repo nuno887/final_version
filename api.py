@@ -48,9 +48,14 @@ def save_upload_to_temp(upload: UploadFile) -> Path:
     Returns the Path to the temp file.
     """
     filename = upload.filename or "upload.pdf"
-    suffix = Path(filename).suffix or ".pdf"
+    filename = Path(filename).name  # strip any directory components
 
+    # Derive stem + suffix from original name
+    stem = Path(filename).stem or "upload"
+    suffix = Path(filename).suffix or ".pdf"
+   
     tmp = tempfile.NamedTemporaryFile(
+        prefix=f"{stem}_",  # <-- include original name in temp file
         suffix=suffix,
         delete=False,
     )
@@ -73,11 +78,11 @@ def save_upload_to_temp(upload: UploadFile) -> Path:
         except Exception:
             pass
 
-        # LOG the error so it appears in console / docker logs
         logger.exception("Failed to store upload to temp file")
         raise HTTPException(status_code=400, detail=f"Failed to store upload: {e}")
 
     return tmp_path
+
 
 
 # -----------------------

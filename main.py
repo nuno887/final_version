@@ -260,7 +260,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
 
 
 def main():
-    pdf = Path(r"pdf_input\\ISerie-003-1997-01-15.pdf")
+    pdf = Path(r"pdf_input\\IIISerie-010-2025-05-23.pdf")
     result = process_pdf(pdf)
     print(result)
 

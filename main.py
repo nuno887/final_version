@@ -158,6 +158,7 @@ def build_dicts(nlp, full_text: str):
 
 
 def process_pdf(pdf: Path) -> Dict[str, Any]:
+    print("=== DEBUG: process_pdf CALLED FROM API ===", pdf)
     serie = is_serie(pdf.name)
     nlp = get_nlp(serie)
 
@@ -259,7 +260,7 @@ def process_pdf(pdf: Path) -> Dict[str, Any]:
 
 
 def main():
-    pdf = Path(r"pdf_input\\IVSerie-020-2020-07-06.pdf")
+    pdf = Path(r"pdf_input\\ISerie-003-1997-01-15.pdf")
     result = process_pdf(pdf)
     print(result)
 

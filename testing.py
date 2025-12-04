@@ -11,7 +11,7 @@ import requests
 PDF_ROOT_DIR = Path(r"D:\\joram").resolve()
 
 # 🔧 DB file name
-DB_PATH = Path("pdf_results.db").resolve()
+DB_PATH = Path("pdf_results_02-12-2025.db").resolve()
 
 # 🔧 FastAPI endpoint
 API_URL = "http://127.0.0.1:8000/process-pdf"

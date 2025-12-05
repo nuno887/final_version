@@ -10,6 +10,68 @@ python -m spacy download pt_core_news_lg
 creating a new relation_extractor
 
 =====================================================================================
+# Results:
+## Json structure
+
+The system produces Json results with the following  top-level structure:<br>
+
+{<br>
+"error": ...,<br>
+"raw_text": ...,<br>
+"docs": [...]<br>
+}
+## Top level fields
+<code>error</code>
+Describes whether parsing succeeded or failed
+* <code>null</code> -> Parsing was successful.
+* Object -> Parsing failed, and the object contains diagnostic details.
+
+### Example error object:
+
+{<br>
+"stage": "split_text",<br>
+"code": "missing_sumario_or_body",<br>
+"message": "Missing sumário_dict or body_dict after split after split_text for non-III série",<br>
+"pdf": "path/to/file.pdf",<br>
+"serie": "OTHER"<br>
+}<br>
+### Common fiels inside <code>error</code>:
+<table>
+  <thead>
+    <tr>
+      <th>Filed</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th><code>stage</code></th>
+      <th>Step in processing where failure occurred</th>
+    </tr>
+    <tr>
+      <th><code>code</code></th>
+      <th>Exception</th>
+    </tr>
+    <tr>
+      <th><code>message</code></th>
+      <th>Human-readable explanation</th>
+    </tr>
+    <tr>
+      <th><code>pdf</code></th>
+      <th>Source file path</th>
+    </tr>
+    <tr>
+      <th><code>serie</code></th>
+      <th>Document classification/series type</th>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+
+
 
 # Componentes:
 ## pdf_markup (Transformar PDF's em texto):
@@ -89,43 +151,43 @@ This module contains functions to fix common structural errors introduced during
   <tbody>
     <tr>
       <td>Sumario</td>
-      <td></td>
-      <td></td>
+      <td>{## **Sumário**, ## **Suplemento**}</td>
+      <td>Represents the beginning of the document’s Sumário. Note: Select the last occurrence because multiple Sumário segments may appear..</td>
     </tr>
     <tr>
       <td>ORG_LABEL</td>
-      <td></td>
-      <td></td>
+      <td>{SECRETARIA REGIONAL DE INCLUSÃO E JUVENTUDE}</td>
+      <td>Represents the organization. Note: Identified by being in all-caps and located within the Sumário segment.</td>
     </tr>
     <tr>
       <td>ORG_WITH_STAR_LABEL</td>
-      <td></td>
-      <td></td>
+      <td>{**RELAÇÕES DE TRABALHO**} </td>
+      <td>Represents the organization or secretary and takes priority over the <code>"ORG_LABEL"</code>, Note: Same detection properties as <code>ORG_LABEL</code>, but contains *, which indicates bold text in the original document.</td>
     </tr>
     <tr>
       <td>DOC_NAME_LABEL</td>
-      <td></td>
-      <td></td>
+      <td>{**Ato Societário n.º 72/2024**, **Cessação de funções de embro do órgão social**, **Decreto Legislativo Regional n.º 2-A/2008/M**  }</td>
+      <td>Represents the specific document being reported by the organization. Note: Considered a <code>DOC_NAME_LABEL</code> when bold text appears in the Sumário and is associated with an <code>ORG_LABEL</code> / <code>ORG_WITH_STAR_LABEL</code>"</td>
     </tr>
     <tr>
       <td>DOC_TEXT</td>
-      <td></td>
-      <td></td>
+      <td>Random line of text</td>
+      <td>Represents secondary text without importance for document segmentation. Note: Still processed because all text must be labeled for downstream modules.</td>
     </tr>
     <tr>
       <td>PARAGRAPH</td>
-      <td></td>
-      <td></td>
+      <td>Larger text excerpts, common in series III PDFs within the Sumário portion.</td>
+      <td>Only relevant for series III documents due to the way their Sumário content is structured.</td>
     </tr>
     <tr>
       <td>JUNK_LABEL</td>
-      <td></td>
-      <td></td>
+      <td>{1n\2n\\n, ..., ------, oisdjfds}</td>
+      <td>Random characters resulting from older PDFs. Note: No text was removed except (1) everything before the start of Sumário and (2) the last page of each PDF.</td>
     </tr>
     <tr>
       <td>SERIE_III</td>
-      <td></td>
-      <td></td>
+      <td>{Direção Regional do Trabalho e da Ação Inspetiva, **Regulamentação do Trabalho**, etc}</td>
+      <td>Used only to avoid breaking classification groups (ORG_LABEL, ORG_WITH_STAR_LABEL, DOC_NAME_LABEL). Note: Not used for any other processing; only improves labeling for series III documents.</td>
     </tr>
   </tbody>
 </table>

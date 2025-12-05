@@ -16,9 +16,9 @@ creating a new relation_extractor
 The system produces Json results with the following  top-level structure:<br>
 
 {<br>
-"error": ...,<br>
-"raw_text": ...,<br>
-"docs": [...]<br>
+**"error"**: ...,<br>
+**"raw_text"**: ...,<br>
+**"docs"**: [...]<br>
 }
 ## Top level fields
 <code>error</code>
@@ -29,11 +29,11 @@ Describes whether parsing succeeded or failed
 ### Example error object:
 
 {<br>
-"stage": "split_text",<br>
-"code": "missing_sumario_or_body",<br>
-"message": "Missing sumário_dict or body_dict after split after split_text for non-III série",<br>
-"pdf": "path/to/file.pdf",<br>
-"serie": "OTHER"<br>
+**"stage"**: "split_text",<br>
+**"code"**: "missing_sumario_or_body",<br>
+**"message"**: "Missing sumário_dict or body_dict after split after split_text for non-III série",<br>
+**"pdf"**: "path/to/file.pdf",<br>
+**"serie"**: "OTHER"<br>
 }<br>
 ### Common fiels inside <code>error</code>:
 <table>
@@ -67,10 +67,57 @@ Describes whether parsing succeeded or failed
   </tbody>
 </table>
 
+### <code>raw_text:</code>
+A string containing the full extracted text from the input PDF.
 
+### <code>docs:</code>
+An array of document objects. If parsing fails or nothing is extractable, this will be empty (<code>[]</code>)
 
+### <code>docs[]</code> Structure:
+Each entry represents a single logical document extracted from the raw text.
 
+{<br>
+**"header_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"org_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"doc_name"**: "Caducidade n.º 24/2025",<br>
+**"body"**: "Full extracted text for this specific document",<br>
+**"org_idx"**: 0<br>
+}<br>
+### Examples:
+#### Successful Parsing
+{<br>
+**"error"**: null,<br>
+**"raw_text"**: "... full text ...",<br>
+**"docs"**: [<br>
+{<br>
+**"header_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"org_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"doc_name"**: "Caducidade n.º 24/2025",<br>
+**"body"**: "... extracted body ...",<br>
+**"org_idx"**: 0<br>
+},<br>
+{<br>
+**"header_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"org_texts"**: ["SECRETARIA REGIONAL DAS FINANÇAS"],<br>
+**"doc_name"**: "Revogação n.º 178/2025",<br>
+**"body"**: "... extracted body ...",<br>
+**"org_idx"**: 0<br>
+}<br>
+]<br>
+}<br>
 
+#### Failed Parsing
+
+{<br>
+**"error"**:{<br>
+**"stagr"**: "split_text",<br>
+**"code"**: "missing_sumario_or_body",<br>
+**"message"**: "Missing sumário_dict or body_dict after split_text for non-III série",<br>
+**"pdf"**: "path/to/file.pdf"<br>
+},<br>
+**"raw_text"**: "...",<br>
+**"docs"**: []<br>
+}<br>
 
 
 # Componentes:
